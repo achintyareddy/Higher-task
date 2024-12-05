@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Assignment Platform</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Task Assignment Platform</h1>
+      <p>Sign up, log in, and get tasks assigned to you.</p>
+    </header>
+    <section id="register" class="section">
+      <h2>Register</h2>
+      <form id="register-form">
+        <label for="reg-username">Username:</label>
+        <input type="text" id="reg-username" required>
+        <label for="reg-password">Password:</label>
+        <input type="password" id="reg-password" required>
+        <label for="reg-role">Role:</label>
+        <select id="reg-role" required>
+          <option value="worker">Worker</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button type="submit">Register</button>
+      </form>
+    </section>
+    <section id="login" class="section hidden">
+      <h2>Login</h2>
+      <form id="login-form">
+        <label for="log-username">Username:</label>
+        <input type="text" id="log-username" required>
+        <label for="log-password">Password:</label>
+        <input type="password" id="log-password" required>
+        <button type="submit">Login</button>
+      </form>
+    </section>
+    <section id="dashboard" class="section hidden">
+      <h2>Dashboard</h2>
+      <div id="user-info"></div>
+      <div id="admin-actions" class="hidden">
+        <h3>Create Task</h3>
+        <form id="task-form">
+          <label for="task-name">Task Name:</label>
+          <input type="text" id="task-name" required>
+          <label for="task-details">Task Details:</label>
+          <textarea id="task-details" required></textarea>
+          <label for="task-assignee">Assign to:</label>
+          <select id="task-assignee" required></select>
+          <button type="submit">Create Task</button>
+        </form>
+      </div>
+      <div id="worker-tasks">
+        <h3>Your Tasks</h3>
+        <div id="tasks-container"></div>
+      </div>
+    </section>
+    <div id="notifications" class="hidden">
+      <p>Notification: <span id="notification-text"></span></p>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  
+  .container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 80%;
+    max-width: 900px;
+    animation: fadeIn 1s ease-in-out;
+  }
+  
+  header {
+    margin-bottom: 20px;
+  }
+  
+  .section {
+    display: none;
+    margin-top: 20px;
+  }
+  
+  .section.active {
+    display: block;
+  }
+  
+  form {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+  }
+  
+  label {
+    margin-bottom: 5px;
+  }
+  
+  input, textarea, select, button {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  
+  button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  
+  button:hover {
+    background-color: #2980b9;
+  }
+  
+  #notifications {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #3498db;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    animation: slideIn 0.5s forwards;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(100%); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    // Show registration form by default
+    showSection('register');
+  
+    // Registration form submission
+    document.getElementById('register-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const username = document.getElementById('reg-username').value;
+      const password = document.getElementById('reg-password').value;
+      const role = document.getElementById('reg-role').value;
+      if (username && password && role) {
+        const user = { username, password, role, tasks: [] };
+        localStorage.setItem(username, JSON.stringify(user));
+        showNotification('Registration successful! Please log in.');
+        showSection('login');
+      }
+    });
+  
+    // Login form submission
+    document.getElementById('login-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const username = document.getElementById('log-username').value;
+      const password = document.getElementById('log-password').value;
+      const user = JSON.parse(localStorage.getItem(username));
+      if (user && user.password === password) {
+        localStorage.setItem('currentUser', username);
+        localStorage.setItem('currentRole', user.role);
+        showNotification('Login successful!');
+        showSection('dashboard');
+        displayUserInfo(user);
+        if (user.role === 'admin') {
+          showAdminActions();
+        } else {
+          displayTasks(user.tasks);
+        }
+      } else {
+        showNotification('Invalid username or password.');
+      }
+    });
+  
+    // Task creation form submission
+    document.getElementById('task-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const taskName = document.getElementById('task-name').value;
+      const taskDetails = document.getElementById('task-details').value;
+      const assignee = document.getElementById('task-assignee').value;
+      const assigneeUser = JSON.parse(localStorage.getItem(assignee));
+      const task = { name: taskName, details: taskDetails, assigned: true };
+      assigneeUser.tasks.push(task);
+      localStorage.setItem(assignee, JSON.stringify(assigneeUser));
+      showNotification('Task created and assigned successfully!');
+      displayTasks(assigneeUser.tasks);
+    });
+  
+    function showSection(sectionId) {
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+      document.getElementById(sectionId).classList.add('active');
+    }
+  
+    function showNotification(message) {
+      const notification = document.getElementById('notifications');
+      document.getElementById('notification-text').innerText = message;
+      notification.classList.remove('hidden');
+      setTimeout(() => {
+        notification.classList.add('hidden');
+      }, 3000);
+    }
+  
+    function displayUserInfo(user) {
+      document.getElementById('user-info').innerHTML = `<p>Welcome, ${user.username}! Role: ${user.role}</p>`;
+    }
+  
+    function showAdminActions() {
+      document.getElementById('admin-actions').classList.remove('hidden');
+      populateAssignees();
+    }
+  
+    function populateAssignees() {
+      const assigneeSelect = document.getElementById('task-assignee');
+      assigneeSelect.innerHTML = '';
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        const user = JSON.parse(localStorage.getItem(key));
+        if (user.role === 'worker') {
+          const option = document.createElement('option');
+          option.value = user.username;
+          option.textContent = user.username;
+          assigneeSelect.appendChild(option);
+        }
+      }
+    }
+  
+    function displayTasks(tasks) {
+      const tasksContainer = document.getElementById('tasks-container');
+      tasksContainer.innerHTML = '';
+      tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.innerHTML = `<h3>${task.name}</h3><p>${task.details}</p>`;
+        tasksContainer.appendChild(taskElement);
+      });
+    }
+  
+    // Check if user is already logged in
+    const currentUser = localStorage.getItem('currentUser');
+    const currentRole = local[_{{{CITATION{{{_1{](https://github.com/buribalazs/smooth-drag-order/tree/7b40d21d076c3e31765f61481f537beaf4c5ec9f/README.md)[_{{{CITATION{{{_2{](https://github.com/vilsonsampaio/task-manager/tree/63dec6f98c73cd4595e77936cf61ecf0bd3aa028/adicionar_tarefas.php)  
